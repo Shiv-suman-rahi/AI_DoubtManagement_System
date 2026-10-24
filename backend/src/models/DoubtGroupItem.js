@@ -22,7 +22,7 @@ const doubtGroupItemSchema = new mongoose.Schema(
     },
     reviewStatus: {
       type: String,
-      enum: ['auto_matched', 'faculty_confirmed', 'faculty_rejected', 'split_out'],
+      enum: ['auto_matched', 'faculty_review_required', 'faculty_confirmed', 'faculty_rejected', 'split_out'],
       default: 'auto_matched',
       index: true
     },

@@ -190,4 +190,81 @@ describe('AI Semantic Grouping & Shared Answer Suite', () => {
     expect(updatedD1.resolutionStatus).toBe(DOUBT_STATUS.ANSWERED);
     expect(updatedD2.resolutionStatus).toBe(DOUBT_STATUS.ANSWERED);
   });
+
+  it('persists doubts that require faculty review of their group match', async () => {
+    const group = await DoubtGroup.create({
+      classSubject: classSubject._id,
+      subject: subject._id,
+      topic: 'Deadlocks',
+      representativeTitle: 'Banker Algorithm Clarification',
+      representativeQuestion: 'Safety state calculation',
+      assignedFaculty: faculty._id
+    });
+    const doubt = await Doubt.create({
+      student: student1._id,
+      classSubject: classSubject._id,
+      subject: subject._id,
+      topic: 'Deadlocks',
+      title: 'Banker algorithm question',
+      questionText: 'How is a safe state checked?',
+      assignedFaculty: faculty._id
+    });
+
+    const item = await DoubtGroupItem.create({
+      group: group._id,
+      doubt: doubt._id,
+      matchConfidence: 0.8,
+      reviewStatus: 'faculty_review_required'
+    });
+
+    expect(item.reviewStatus).toBe('faculty_review_required');
+  });
+
+  it('lists active and suggested groups by default and supports explicit status filtering', async () => {
+    const activeGroup = await DoubtGroup.create({
+      classSubject: classSubject._id,
+      subject: subject._id,
+      topic: 'Deadlocks',
+      representativeTitle: 'Active group',
+      representativeQuestion: 'Active question',
+      assignedFaculty: faculty._id,
+      status: DOUBT_GROUP_STATUS.ACTIVE
+    });
+    const suggestedGroup = await DoubtGroup.create({
+      classSubject: classSubject._id,
+      subject: subject._id,
+      topic: 'Deadlocks',
+      representativeTitle: 'Suggested group',
+      representativeQuestion: 'Suggested question',
+      assignedFaculty: faculty._id,
+      status: DOUBT_GROUP_STATUS.SUGGESTED
+    });
+    const resolvedGroup = await DoubtGroup.create({
+      classSubject: classSubject._id,
+      subject: subject._id,
+      topic: 'Deadlocks',
+      representativeTitle: 'Resolved group',
+      representativeQuestion: 'Resolved question',
+      assignedFaculty: faculty._id,
+      status: DOUBT_GROUP_STATUS.RESOLVED
+    });
+
+    const defaultRes = await request(app)
+      .get('/api/faculty/doubt-groups')
+      .set('Authorization', `Bearer ${tokenFaculty}`);
+
+    expect(defaultRes.status).toBe(200);
+    expect(defaultRes.body.groups.map(group => group._id)).toEqual(
+      expect.arrayContaining([activeGroup._id.toString(), suggestedGroup._id.toString()])
+    );
+    expect(defaultRes.body.groups.map(group => group._id)).not.toContain(resolvedGroup._id.toString());
+
+    const resolvedRes = await request(app)
+      .get('/api/faculty/doubt-groups')
+      .query({ status: DOUBT_GROUP_STATUS.RESOLVED })
+      .set('Authorization', `Bearer ${tokenFaculty}`);
+
+    expect(resolvedRes.status).toBe(200);
+    expect(resolvedRes.body.groups.map(group => group._id)).toEqual([resolvedGroup._id.toString()]);
+  });
 });

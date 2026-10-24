@@ -170,9 +170,11 @@ export async function getFacultyDoubtGroups(req, res, next) {
     const assignments = await FacultyAssignment.find({ faculty: facultyId, status: 'active' });
     const classSubjectIds = assignments.map(a => a.classSubject);
 
-    const query = { classSubject: { $in: classSubjectIds } };
+    const query = {
+      classSubject: { $in: classSubjectIds },
+      status: status || { $in: [DOUBT_GROUP_STATUS.ACTIVE, DOUBT_GROUP_STATUS.SUGGESTED] }
+    };
     if (subjectId) query.subject = subjectId;
-    if (status) query.status = status;
 
     const groups = await DoubtGroup.find(query)
       .sort({ updatedAt: -1 })
