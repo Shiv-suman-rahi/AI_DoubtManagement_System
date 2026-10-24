@@ -287,4 +287,182 @@ describe('Privacy and Access Control Suite', () => {
     expect(log).not.toBeNull();
     expect(log.actor.toString()).toBe(adminUser._id.toString());
   });
+
+  it('lets a student complete initial academic selection only once', async () => {
+    await StudentProfile.create({
+      user: studentA._id,
+      studentId: 'STU-INIT-001',
+      rollNumber: 'INIT-001',
+      academicProfileStatus: 'pending'
+    });
+
+    const options = await request(app)
+      .get('/api/student/profile/class-options')
+      .set('Authorization', `Bearer ${tokenA}`);
+    expect(options.status).toBe(200);
+    expect(options.body.classrooms.map(classroom => classroom._id)).toContain(classroom1._id.toString());
+
+    const selection = await request(app)
+      .post('/api/student/profile/initial-selection')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ classroomId: classroom1._id.toString() });
+    expect(selection.status).toBe(200);
+    expect(selection.body.profile.academicProfileStatus).toBe('complete');
+    expect(selection.body.profile.currentClassroom._id).toBe(classroom1._id.toString());
+
+    const secondSelection = await request(app)
+      .post('/api/student/profile/initial-selection')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ classroomId: classroom2._id.toString() });
+    expect(secondSelection.status).toBe(409);
+
+    const adminAttempt = await request(app)
+      .post('/api/student/profile/initial-selection')
+      .set('Authorization', `Bearer ${tokenAdmin}`)
+      .send({ classroomId: classroom2._id.toString() });
+    expect(adminAttempt.status).toBe(403);
+  });
+
+  it('allows admins to create and deactivate authorized faculty assignments', async () => {
+    const createRes = await request(app)
+      .post('/api/admin/assign-faculty')
+      .set('Authorization', `Bearer ${tokenAdmin}`)
+      .send({ facultyId: facultyUnassigned._id.toString(), classSubjectId: classSubject2._id.toString(), role: 'co-faculty' });
+
+    expect(createRes.status).toBe(200);
+    expect(createRes.body.assignment.status).toBe('active');
+
+    const listRes = await request(app)
+      .get('/api/admin/faculty-assignments?status=active')
+      .set('Authorization', `Bearer ${tokenAdmin}`);
+    expect(listRes.status).toBe(200);
+    expect(listRes.body.assignments.some(item => item._id === createRes.body.assignment._id)).toBe(true);
+
+    const removeRes = await request(app)
+      .delete(`/api/admin/faculty-assignments/${createRes.body.assignment._id}`)
+      .set('Authorization', `Bearer ${tokenAdmin}`);
+    expect(removeRes.status).toBe(200);
+    expect(removeRes.body.assignment.status).toBe('inactive');
+
+    const deniedQueue = await request(app)
+      .get(`/api/faculty/doubts?classSubjectId=${classSubject2._id}`)
+      .set('Authorization', `Bearer ${tokenFacultyUnassigned}`);
+    expect(deniedQueue.status).toBe(403);
+  });
+
+  it('creates complete student and faculty profiles through admin user creation', async () => {
+    const studentRes = await request(app)
+      .post('/api/admin/users')
+      .set('Authorization', `Bearer ${tokenAdmin}`)
+      .send({
+        name: 'New Student',
+        email: 'new.student@apex.edu',
+        password: 'StrongPass@123',
+        role: ROLES.STUDENT,
+        profileData: {
+          studentId: 'STU-NEW-001',
+          rollNumber: 'NEW-001',
+          admissionYear: 2024,
+          classroomId: classroom1._id.toString()
+        }
+      });
+
+    expect(studentRes.status).toBe(201);
+    const studentProfile = await StudentProfile.findOne({ user: studentRes.body.user._id });
+    expect(studentProfile.academicProfileStatus).toBe('complete');
+    expect(studentProfile.currentClassroom.toString()).toBe(classroom1._id.toString());
+
+    const facultyRes = await request(app)
+      .post('/api/admin/users')
+      .set('Authorization', `Bearer ${tokenAdmin}`)
+      .send({
+        name: 'New Faculty',
+        email: 'new.faculty@apex.edu',
+        password: 'StrongPass@123',
+        role: ROLES.FACULTY,
+        profileData: {
+          employeeId: 'EMP-NEW-001',
+          departmentId: (await FacultyProfile.findOne({ user: facultyAuthorized._id }))?.department || (await Department.findOne())._id.toString(),
+          designation: 'Associate Professor'
+        }
+      });
+
+    expect(facultyRes.status).toBe(201);
+    const facultyProfile = await FacultyProfile.findOne({ user: facultyRes.body.user._id });
+    expect(facultyProfile.employeeId).toBe('EMP-NEW-001');
+    expect(facultyProfile.designation).toBe('Associate Professor');
+  });
+
+  it('lets admins transfer a student while retaining doubt history and re-routing open doubts', async () => {
+    const profile = await StudentProfile.create({
+      user: studentB._id,
+      studentId: 'STU-TRANSFER-001',
+      rollNumber: 'TRANSFER-001',
+      branch: classroom2.branch,
+      program: 'B.Tech CSE',
+      semester: classroom2.semester,
+      section: classroom2.section,
+      academicYear: classroom2.academicYear,
+      currentClassroom: classroom2._id,
+      academicProfileStatus: 'complete'
+    });
+    const originalDoubt = await Doubt.create({
+      student: studentB._id,
+      classSubject: classSubject2._id,
+      subject: subjectOS._id,
+      topic: 'Deadlocks',
+      title: 'Open transfer doubt',
+      questionText: 'Will this unanswered doubt stay on my history?',
+      assignedFaculty: facultyUnassigned._id
+    });
+
+    const res = await request(app)
+      .patch(`/api/admin/users/${studentB._id}`)
+      .set('Authorization', `Bearer ${tokenAdmin}`)
+      .send({
+        profileData: {
+          studentId: profile.studentId,
+          rollNumber: profile.rollNumber,
+          classroomId: classroom1._id.toString()
+        }
+      });
+
+    expect(res.status).toBe(200);
+    const updatedProfile = await StudentProfile.findOne({ user: studentB._id });
+    expect(updatedProfile.currentClassroom.toString()).toBe(classroom1._id.toString());
+    const updatedDoubt = await Doubt.findById(originalDoubt._id);
+    expect(updatedDoubt).not.toBeNull();
+    expect(updatedDoubt.originalClassSubject.toString()).toBe(classSubject2._id.toString());
+    expect(updatedDoubt.classSubject.toString()).toBe(classSubject1._id.toString());
+    expect(updatedDoubt.assignedFaculty.toString()).toBe(facultyAuthorized._id.toString());
+    expect(await Enrollment.exists({ student: studentB._id, classroom: classroom2._id, status: 'active' })).toBeNull();
+    expect(await Enrollment.exists({ student: studentB._id, classroom: classroom1._id, status: 'active' })).not.toBeNull();
+  });
+
+  it('protects private doubt attachments behind the same ownership and assignment checks', async () => {
+    await Doubt.create({
+      student: studentB._id,
+      classSubject: classSubject2._id,
+      subject: subjectOS._id,
+      topic: 'Deadlocks',
+      title: 'Attachment authorization check',
+      questionText: 'Private attachment owner check',
+      attachments: [{
+        url: '/uploads/attachment-auth-check.txt',
+        fileType: 'document',
+        originalName: 'private.txt',
+        sizeBytes: 1
+      }]
+    });
+
+    const unauthorized = await request(app)
+      .get('/api/files/attachment-auth-check.txt')
+      .set('Authorization', `Bearer ${tokenA}`);
+    expect(unauthorized.status).toBe(403);
+
+    const owner = await request(app)
+      .get('/api/files/attachment-auth-check.txt')
+      .set('Authorization', `Bearer ${tokenB}`);
+    expect(owner.status).toBe(404);
+  });
 });

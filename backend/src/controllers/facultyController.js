@@ -9,6 +9,15 @@ import { sendNotification } from '../services/socketService.js';
 import { logAudit } from '../services/auditService.js';
 import { DOUBT_STATUS, DOUBT_GROUP_STATUS, NOTIFICATION_TYPE, AUDIT_ACTIONS, PRIVACY_MODE } from '../config/constants.js';
 
+async function facultyHasAssignment(user, classSubjectId) {
+  if (user.role === 'admin') return true;
+  return Boolean(await FacultyAssignment.exists({
+    faculty: user._id,
+    classSubject: classSubjectId,
+    status: 'active'
+  }));
+}
+
 export async function getFacultyAssignments(req, res, next) {
   try {
     const facultyId = req.user._id;
@@ -37,6 +46,13 @@ export async function getFacultyDashboard(req, res, next) {
     // Get assigned classSubjects
     const assignments = await FacultyAssignment.find({ faculty: facultyId, status: 'active' });
     const classSubjectIds = assignments.map(a => a.classSubject);
+    const visibleAssignments = await FacultyAssignment.find({ faculty: facultyId, status: 'active' }).populate({
+      path: 'classSubject',
+      populate: [
+        { path: 'subject', select: 'name code' },
+        { path: 'classroom', populate: { path: 'program', select: 'name code' } }
+      ]
+    });
 
     const [
       pendingDoubtsCount,
@@ -97,7 +113,8 @@ export async function getFacultyDashboard(req, res, next) {
         averageResponseTimeHours: 4.2
       },
       recentDoubts: safeRecentDoubts,
-      activeGroups
+      activeGroups,
+      assignments: visibleAssignments
     });
   } catch (error) {
     next(error);
@@ -114,7 +131,12 @@ export async function getFacultyDoubts(req, res, next) {
     const classSubjectIds = assignments.map(a => a.classSubject);
 
     const query = { classSubject: { $in: classSubjectIds } };
-    if (classSubjectId) query.classSubject = classSubjectId;
+    if (classSubjectId) {
+      if (!classSubjectIds.some(id => id.toString() === classSubjectId)) {
+        return res.status(403).json({ success: false, message: 'You are not assigned to this class-subject' });
+      }
+      query.classSubject = classSubjectId;
+    }
     if (subjectId) query.subject = subjectId;
     if (status) query.resolutionStatus = status;
     if (topic) query.topic = topic;
@@ -216,6 +238,9 @@ export async function getFacultyDoubtGroupById(req, res, next) {
     if (!group) {
       return res.status(404).json({ success: false, message: 'Doubt group not found' });
     }
+    if (!await facultyHasAssignment(req.user, group.classSubject._id)) {
+      return res.status(403).json({ success: false, message: 'You are not assigned to this class-subject' });
+    }
 
     // Get all linked items with doubts
     const items = await DoubtGroupItem.find({ group: group._id }).populate({
@@ -263,6 +288,9 @@ export async function answerDoubtGroup(req, res, next) {
     const group = await DoubtGroup.findById(id).populate('classSubject').populate('subject');
     if (!group) {
       return res.status(404).json({ success: false, message: 'Doubt group not found' });
+    }
+    if (!await facultyHasAssignment(req.user, group.classSubject._id)) {
+      return res.status(403).json({ success: false, message: 'You are not assigned to this class-subject' });
     }
 
     // 1. Create shared answer
@@ -352,6 +380,9 @@ export async function answerSingleDoubt(req, res, next) {
     if (!doubt) {
       return res.status(404).json({ success: false, message: 'Doubt not found' });
     }
+    if (!await facultyHasAssignment(req.user, doubt.classSubject)) {
+      return res.status(403).json({ success: false, message: 'You are not assigned to this class-subject' });
+    }
 
     const answer = await Answer.create({
       author: facultyId,
@@ -395,9 +426,16 @@ export async function splitDoubtGroup(req, res, next) {
 
     const group = await DoubtGroup.findById(id);
     if (!group) return res.status(404).json({ success: false, message: 'Group not found' });
+    if (!await facultyHasAssignment(req.user, group.classSubject)) {
+      return res.status(403).json({ success: false, message: 'You are not assigned to this class-subject' });
+    }
 
     const doubt = await Doubt.findById(doubtId);
     if (!doubt) return res.status(404).json({ success: false, message: 'Doubt not found' });
+    if (doubt.classSubject.toString() !== group.classSubject.toString()
+      || !(await DoubtGroupItem.exists({ group: group._id, doubt: doubt._id }))) {
+      return res.status(400).json({ success: false, message: 'Doubt is not part of this group' });
+    }
 
     // Remove from existing group
     await DoubtGroupItem.deleteOne({ group: group._id, doubt: doubt._id });
@@ -463,6 +501,13 @@ export async function mergeDoubtGroups(req, res, next) {
     if (!sourceGroup || !targetGroup) {
       return res.status(404).json({ success: false, message: 'One or both groups not found' });
     }
+    if (!await facultyHasAssignment(req.user, sourceGroup.classSubject)
+      || !await facultyHasAssignment(req.user, targetGroup.classSubject)) {
+      return res.status(403).json({ success: false, message: 'You are not assigned to both groups' });
+    }
+    if (sourceGroup.classSubject.toString() !== targetGroup.classSubject.toString()) {
+      return res.status(400).json({ success: false, message: 'Only groups from the same class-subject can be merged' });
+    }
 
     // Move all items from source to target
     const items = await DoubtGroupItem.find({ group: sourceGroup._id });
@@ -514,6 +559,9 @@ export async function updateDoubtStatus(req, res, next) {
 
     const doubt = await Doubt.findById(id);
     if (!doubt) return res.status(404).json({ success: false, message: 'Doubt not found' });
+    if (!await facultyHasAssignment(req.user, doubt.classSubject)) {
+      return res.status(403).json({ success: false, message: 'You are not assigned to this class-subject' });
+    }
 
     doubt.resolutionStatus = status;
     if (status === DOUBT_STATUS.RESOLVED || status === DOUBT_STATUS.ANSWERED) {

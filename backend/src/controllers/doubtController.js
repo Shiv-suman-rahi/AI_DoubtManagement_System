@@ -1,6 +1,7 @@
 import { Doubt } from '../models/Doubt.js';
 import { Enrollment } from '../models/Enrollment.js';
 import { ClassSubject } from '../models/ClassSubject.js';
+import { Subject } from '../models/Subject.js';
 import { FacultyAssignment } from '../models/FacultyAssignment.js';
 import { Answer } from '../models/Answer.js';
 import { aiService } from '../services/ai/aiService.js';
@@ -16,6 +17,8 @@ export async function submitDoubt(req, res, next) {
       subjectId,
       topic,
       subtopic,
+      topicType,
+      subtopicType,
       title,
       questionText,
       privacyMode,
@@ -27,6 +30,50 @@ export async function submitDoubt(req, res, next) {
     const classSubject = await ClassSubject.findById(classSubjectId);
     if (!classSubject) {
       return res.status(404).json({ success: false, message: 'Class-Subject offering not found' });
+    }
+
+    const normalizedTopic = typeof topic === 'string' ? topic.trim() : '';
+    const normalizedSubtopic = typeof subtopic === 'string' ? subtopic.trim() : '';
+    if (!normalizedTopic || normalizedTopic.length > 120) {
+      return res.status(400).json({ success: false, message: 'Topic is required and must be 120 characters or fewer' });
+    }
+    if (normalizedSubtopic.length > 120) {
+      return res.status(400).json({ success: false, message: 'Subtopic must be 120 characters or fewer' });
+    }
+
+    const subject = await Subject.findById(classSubject.subject);
+    if (!subject || (subjectId && subjectId !== classSubject.subject.toString())) {
+      return res.status(400).json({ success: false, message: 'Subject does not match the selected class offering' });
+    }
+
+    const syllabusTopic = subject.syllabus.find(
+      item => item.topic.trim().toLowerCase() === normalizedTopic.toLowerCase()
+    );
+    const resolvedTopicType = topicType || (syllabusTopic ? 'predefined' : 'custom');
+    if (!['predefined', 'custom'].includes(resolvedTopicType)) {
+      return res.status(400).json({ success: false, message: 'Invalid topic type' });
+    }
+    if (resolvedTopicType === 'predefined' && !syllabusTopic) {
+      return res.status(400).json({ success: false, message: 'Selected topic is not in this subject syllabus' });
+    }
+
+    let resolvedSubtopicType = subtopicType;
+    if (!normalizedSubtopic) {
+      if (resolvedSubtopicType === 'custom' || resolvedSubtopicType === 'predefined') {
+        return res.status(400).json({ success: false, message: 'Enter the selected subtopic' });
+      }
+      resolvedSubtopicType = 'not_applicable';
+    } else {
+      const syllabusSubtopic = syllabusTopic?.subtopics?.some(
+        value => value.trim().toLowerCase() === normalizedSubtopic.toLowerCase()
+      );
+      resolvedSubtopicType = resolvedSubtopicType || (syllabusSubtopic ? 'predefined' : 'custom');
+      if (!['predefined', 'custom'].includes(resolvedSubtopicType)) {
+        return res.status(400).json({ success: false, message: 'Invalid subtopic type' });
+      }
+      if (resolvedSubtopicType === 'predefined' && !syllabusSubtopic) {
+        return res.status(400).json({ success: false, message: 'Selected subtopic is not part of this topic' });
+      }
     }
 
     // 2. Validate Student is actively enrolled in this classroom
@@ -45,7 +92,7 @@ export async function submitDoubt(req, res, next) {
 
     // 3. Process attachments if uploaded via multer
     const attachments = (req.files || []).map(file => ({
-      url: `/uploads/${file.filename}`,
+      url: `/api/files/${file.filename}`,
       fileType: file.detectedType || 'document',
       originalName: file.originalname,
       sizeBytes: file.size
@@ -63,9 +110,12 @@ export async function submitDoubt(req, res, next) {
     const doubt = await Doubt.create({
       student: studentId,
       classSubject: classSubject._id,
-      subject: subjectId || classSubject.subject,
-      topic: topic.trim(),
-      subtopic: subtopic ? subtopic.trim() : '',
+      originalClassSubject: classSubject._id,
+      subject: classSubject.subject,
+      topic: normalizedTopic,
+      topicType: resolvedTopicType,
+      subtopic: normalizedSubtopic,
+      subtopicType: resolvedSubtopicType,
       title: title.trim(),
       questionText: questionText.trim(),
       attachments,
@@ -201,7 +251,7 @@ export async function getDoubtById(req, res, next) {
         status: 'active'
       });
 
-      if (!isAssigned && doubt.assignedFaculty?._id?.toString() !== user._id.toString()) {
+      if (!isAssigned) {
         return res.status(403).json({
           success: false,
           message: 'Access denied: You are not assigned to teach this class-subject'
@@ -260,6 +310,16 @@ export async function addFollowUp(req, res, next) {
 
     if (!isStudentOwner && !isFaculty && user.role !== ROLES.ADMIN) {
       return res.status(403).json({ success: false, message: 'Access denied to this doubt thread' });
+    }
+    if (isFaculty) {
+      const isAssigned = await FacultyAssignment.exists({
+        faculty: user._id,
+        classSubject: doubt.classSubject,
+        status: 'active'
+      });
+      if (!isAssigned) {
+        return res.status(403).json({ success: false, message: 'You are not assigned to this class-subject' });
+      }
     }
 
     doubt.followUps.push({

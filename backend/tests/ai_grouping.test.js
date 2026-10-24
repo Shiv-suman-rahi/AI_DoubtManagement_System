@@ -191,6 +191,60 @@ describe('AI Semantic Grouping & Shared Answer Suite', () => {
     expect(updatedD2.resolutionStatus).toBe(DOUBT_STATUS.ANSWERED);
   });
 
+  it('stores custom topics and subtopics without changing the official syllabus', async () => {
+    const res = await request(app)
+      .post('/api/doubts')
+      .set('Authorization', `Bearer ${tokenStudent1}`)
+      .send({
+        classSubjectId: classSubject._id.toString(),
+        subjectId: subject._id.toString(),
+        topic: 'Amortized Analysis',
+        topicType: 'custom',
+        subtopic: 'Potential method',
+        subtopicType: 'custom',
+        title: 'Custom algorithm analysis topic',
+        questionText: 'How does the potential method amortize operation costs?'
+      });
+
+    expect(res.status).toBe(201);
+    const savedDoubt = await Doubt.findById(res.body.doubt._id);
+    expect(savedDoubt.topic).toBe('Amortized Analysis');
+    expect(savedDoubt.topicType).toBe('custom');
+    expect(savedDoubt.subtopic).toBe('Potential method');
+    expect(savedDoubt.subtopicType).toBe('custom');
+    const reloadedSubject = await Subject.findById(subject._id);
+    expect(reloadedSubject.syllabus.some(item => item.topic === 'Amortized Analysis')).toBe(false);
+  });
+
+  it('rejects invalid predefined topics and missing custom subtopic values', async () => {
+    const invalidTopic = await request(app)
+      .post('/api/doubts')
+      .set('Authorization', `Bearer ${tokenStudent1}`)
+      .send({
+        classSubjectId: classSubject._id.toString(),
+        subjectId: subject._id.toString(),
+        topic: 'Not in the syllabus',
+        topicType: 'predefined',
+        title: 'Invalid topic',
+        questionText: 'Question text'
+      });
+    expect(invalidTopic.status).toBe(400);
+
+    const missingSubtopic = await request(app)
+      .post('/api/doubts')
+      .set('Authorization', `Bearer ${tokenStudent1}`)
+      .send({
+        classSubjectId: classSubject._id.toString(),
+        subjectId: subject._id.toString(),
+        topic: 'Deadlocks',
+        topicType: 'predefined',
+        subtopicType: 'custom',
+        title: 'Missing custom subtopic',
+        questionText: 'Question text'
+      });
+    expect(missingSubtopic.status).toBe(400);
+  });
+
   it('persists doubts that require faculty review of their group match', async () => {
     const group = await DoubtGroup.create({
       classSubject: classSubject._id,

@@ -1,6 +1,8 @@
 import express from 'express';
 import {
   getStudentProfile,
+  getStudentClassOptions,
+  completeInitialAcademicSelection,
   getStudentClasses,
   getStudentSubjects,
   getStudentDashboard
@@ -15,6 +17,8 @@ router.use(authenticate);
 router.use(authorizeRoles(ROLES.STUDENT, ROLES.ADMIN));
 
 router.get('/profile', getStudentProfile);
+router.get('/profile/class-options', getStudentClassOptions);
+router.post('/profile/initial-selection', completeInitialAcademicSelection);
 router.get('/classes', getStudentClasses);
 router.get('/subjects', getStudentSubjects);
 router.get('/dashboard', getStudentDashboard);

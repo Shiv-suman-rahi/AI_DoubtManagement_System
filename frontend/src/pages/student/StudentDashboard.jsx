@@ -65,7 +65,7 @@ export function StudentDashboard() {
     <div className="flex-1 min-h-screen bg-slate-50 flex flex-col">
       <Navbar
         title="Student Dashboard"
-        subtitle={`Welcome back, ${user?.name} · Academic Year 2025-2026`}
+        subtitle={`Welcome back, ${user?.name} · Academic Year ${profile?.academicYear || 'pending'}`}
       />
 
       <main className="p-6 md:p-8 max-w-7xl mx-auto w-full space-y-6">
@@ -90,13 +90,26 @@ export function StudentDashboard() {
               <GraduationCap className="w-4 h-4" /> Academic Enrollment
             </p>
             <div className="text-slate-200 space-y-1 pt-1">
-              <div className="flex justify-between"><span className="text-slate-400">Program:</span> <span className="font-semibold">{profile?.program || 'B.Tech CSE'}</span></div>
-              <div className="flex justify-between"><span className="text-slate-400">Semester:</span> <span className="font-semibold">Sem {profile?.semester || 5} (Sec {profile?.section || 'A'})</span></div>
-              <div className="flex justify-between"><span className="text-slate-400">Roll No:</span> <span className="font-mono text-cyan-300 font-bold">{profile?.rollNumber || '23CSE041'}</span></div>
-              <div className="flex justify-between"><span className="text-slate-400">Student ID:</span> <span className="font-mono">{profile?.studentId || 'STU-2023-0101'}</span></div>
+              <div className="flex justify-between"><span className="text-slate-400">Program:</span> <span className="font-semibold">{profile?.programRef?.name || profile?.program || 'Pending selection'}</span></div>
+              <div className="flex justify-between"><span className="text-slate-400">Semester:</span> <span className="font-semibold">{profile?.semester ? `Sem ${profile.semester} · Sec ${profile.section}` : 'Pending selection'}</span></div>
+              <div className="flex justify-between"><span className="text-slate-400">Roll No:</span> <span className="font-mono text-cyan-300 font-bold">{profile?.rollNumber || 'Not assigned'}</span></div>
+              <div className="flex justify-between"><span className="text-slate-400">Student ID:</span> <span className="font-mono">{profile?.studentId || 'Not assigned'}</span></div>
+              <Link to="/student/profile" className="inline-block pt-1 text-cyan-300 hover:text-white font-semibold">View academic profile →</Link>
             </div>
           </div>
         </div>
+
+        {profile?.academicProfileStatus === 'pending' && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <p className="font-bold text-amber-900 text-sm">Complete your academic profile</p>
+              <p className="text-xs text-amber-800 mt-1">Choose your initial classroom once to unlock your enrolled subjects and doubt submission.</p>
+            </div>
+            <Link to="/student/profile" className="shrink-0 px-4 py-2 rounded-lg bg-amber-700 text-white text-xs font-bold hover:bg-amber-800">
+              Select my class
+            </Link>
+          </div>
+        )}
 
         {/* Real Dynamic Metrics */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -136,7 +149,7 @@ export function StudentDashboard() {
           <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Enrolled Subjects</p>
-              <h3 className="text-2xl font-bold text-indigo-600 mt-1">{stats.activeClassesCount * 3}</h3>
+              <h3 className="text-2xl font-bold text-indigo-600 mt-1">{stats.activeSubjectsCount || 0}</h3>
               <p className="text-[11px] text-slate-400 mt-0.5">Active curriculum</p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
@@ -251,7 +264,7 @@ export function StudentDashboard() {
                         )}
                       </td>
                       <td className="py-3.5 px-4 font-medium text-slate-600">{d.subject?.code}</td>
-                      <td className="py-3.5 px-4 text-slate-600">{d.topic}</td>
+                      <td className="py-3.5 px-4 text-slate-600">{d.topic}{d.subtopic ? ` · ${d.subtopic}` : ''}</td>
                       <td className="py-3.5 px-4 text-slate-600">{d.assignedFaculty?.name || 'Assigned'}</td>
                       <td className="py-3.5 px-4">
                         <StatusBadge status={d.resolutionStatus} />

@@ -32,6 +32,24 @@ export function DoubtDetailPage() {
   const [feedbackComment, setFeedbackComment] = useState('');
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
+  const downloadAttachment = async attachment => {
+    const filename = attachment.url?.split('/').pop();
+    if (!filename) return;
+    try {
+      const response = await api.get(`/files/${encodeURIComponent(filename)}`, { responseType: 'blob' });
+      const objectUrl = URL.createObjectURL(response.data);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = attachment.originalName || filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (downloadError) {
+      setError(downloadError.response?.data?.message || 'Failed to download attachment');
+    }
+  };
+
   useEffect(() => {
     async function loadDoubt() {
       try {
@@ -112,7 +130,7 @@ export function DoubtDetailPage() {
     <div className="flex-1 min-h-screen bg-slate-50 flex flex-col">
       <Navbar
         title={`Doubt #${doubt._id.slice(-6).toUpperCase()}`}
-        subtitle={`${doubt.subject?.name} (${doubt.subject?.code}) · ${doubt.topic}`}
+        subtitle={`${doubt.subject?.name} (${doubt.subject?.code}) · ${doubt.topic}${doubt.subtopic ? ` · ${doubt.subtopic}` : ''}`}
       />
 
       <main className="p-6 md:p-8 max-w-5xl mx-auto w-full space-y-6">
@@ -129,6 +147,7 @@ export function DoubtDetailPage() {
             <div className="flex items-center space-x-2">
               <span className="text-xs font-bold text-brand-600 uppercase tracking-wider">
                 {doubt.subject?.code} · {doubt.topic}
+                {doubt.subtopic && ` · ${doubt.subtopic}`}
               </span>
               {doubt.privacyMode === 'anonymous' && (
                 <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-medium">
@@ -170,16 +189,15 @@ export function DoubtDetailPage() {
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Attachments</p>
               <div className="flex flex-wrap gap-2">
                 {doubt.attachments.map((att, idx) => (
-                  <a
+                  <button
                     key={idx}
-                    href={att.url}
-                    target="_blank"
-                    rel="noreferrer"
+                    type="button"
+                    onClick={() => downloadAttachment(att)}
                     className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-medium border border-slate-200 transition-colors"
                   >
                     <FileText className="w-4 h-4 text-slate-500" />
                     <span>{att.originalName}</span>
-                  </a>
+                  </button>
                 ))}
               </div>
             </div>

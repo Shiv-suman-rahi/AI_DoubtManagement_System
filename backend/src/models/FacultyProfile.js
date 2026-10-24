@@ -15,6 +15,7 @@ const facultyProfileSchema = new mongoose.Schema(
       unique: true,
       trim: true,
       uppercase: true,
+      maxlength: 40,
       index: true
     },
     department: {
@@ -22,10 +23,16 @@ const facultyProfileSchema = new mongoose.Schema(
       ref: 'Department',
       required: true
     },
+    academicTitle: {
+      type: String,
+      default: '',
+      trim: true
+    },
     designation: {
       type: String,
       required: true,
-      trim: true
+      trim: true,
+      maxlength: 80
     },
     officeLocation: {
       type: String,

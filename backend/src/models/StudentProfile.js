@@ -11,44 +11,88 @@ const studentProfileSchema = new mongoose.Schema(
     },
     studentId: {
       type: String,
-      required: true,
+      required: function () {
+        return this.academicProfileStatus === 'complete';
+      },
       unique: true,
       trim: true,
       uppercase: true,
+      maxlength: 40,
       index: true
     },
     rollNumber: {
       type: String,
-      required: true,
+      required: function () {
+        return this.academicProfileStatus === 'complete';
+      },
+      unique: true,
       trim: true,
+      maxlength: 40,
       index: true
     },
     branch: {
       type: String,
-      required: true,
+      required: function () {
+        return this.academicProfileStatus === 'complete';
+      },
       trim: true
     },
     program: {
       type: String,
-      required: true,
+      required: function () {
+        return this.academicProfileStatus === 'complete';
+      },
       trim: true
+    },
+    programRef: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Program'
+    },
+    department: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Department'
+    },
+    admissionYear: {
+      type: Number,
+      min: 1900,
+      max: 2200
+    },
+    studyYear: {
+      type: Number,
+      min: 1,
+      max: 12
     },
     semester: {
       type: Number,
-      required: true,
+      required: function () {
+        return this.academicProfileStatus === 'complete';
+      },
       min: 1,
       max: 12
     },
     section: {
       type: String,
-      required: true,
+      required: function () {
+        return this.academicProfileStatus === 'complete';
+      },
       trim: true,
       uppercase: true
     },
     academicYear: {
       type: String,
-      required: true,
+      required: function () {
+        return this.academicProfileStatus === 'complete';
+      },
       trim: true
+    },
+    academicProfileStatus: {
+      type: String,
+      enum: ['pending', 'complete'],
+      default: 'complete',
+      index: true
+    },
+    initialSelectionCompletedAt: {
+      type: Date
     },
     enrollmentStatus: {
       type: String,

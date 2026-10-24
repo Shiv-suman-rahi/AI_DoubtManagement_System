@@ -97,6 +97,10 @@ const doubtSchema = new mongoose.Schema(
       required: true,
       index: true
     },
+    originalClassSubject: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'ClassSubject'
+    },
     subject: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Subject',
@@ -107,12 +111,24 @@ const doubtSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      maxlength: 120,
       index: true
+    },
+    topicType: {
+      type: String,
+      enum: ['predefined', 'custom'],
+      default: 'predefined'
     },
     subtopic: {
       type: String,
       default: '',
-      trim: true
+      trim: true,
+      maxlength: 120
+    },
+    subtopicType: {
+      type: String,
+      enum: ['predefined', 'custom', 'not_applicable'],
+      default: 'not_applicable'
     },
     title: {
       type: String,

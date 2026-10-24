@@ -15,8 +15,10 @@ import { MyDoubtsPage } from './pages/student/MyDoubtsPage.jsx';
 import { DoubtDetailPage } from './pages/student/DoubtDetailPage.jsx';
 import { MyClassesPage } from './pages/student/MyClassesPage.jsx';
 import { BrowseSubjectsPage } from './pages/student/BrowseSubjectsPage.jsx';
+import { StudentProfilePage } from './pages/student/StudentProfilePage.jsx';
 
 import { FacultyDashboard } from './pages/faculty/FacultyDashboard.jsx';
+import { FacultyProfilePage } from './pages/faculty/FacultyProfilePage.jsx';
 import { DoubtQueuePage } from './pages/faculty/DoubtQueuePage.jsx';
 import { GroupManagementPage } from './pages/faculty/GroupManagementPage.jsx';
 
@@ -123,6 +125,14 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/student/profile"
+                element={
+                  <ProtectedRoute allowedRoles={['student']}>
+                    <StudentProfilePage />
+                  </ProtectedRoute>
+                }
+              />
 
               {/* Faculty Routes */}
               <Route
@@ -130,6 +140,14 @@ export default function App() {
                 element={
                   <ProtectedRoute allowedRoles={['faculty', 'admin']}>
                     <FacultyDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/faculty/profile"
+                element={
+                  <ProtectedRoute allowedRoles={['faculty']}>
+                    <FacultyProfilePage />
                   </ProtectedRoute>
                 }
               />

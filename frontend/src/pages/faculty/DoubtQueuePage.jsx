@@ -226,7 +226,7 @@ export function DoubtQueuePage() {
                         <p className="text-slate-500 line-clamp-1 mt-0.5 text-[11px]">{d.questionText}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-[10px] font-semibold text-brand-600 bg-brand-50 px-2 py-0.5 rounded">
-                            {d.topic}
+                            {d.topic}{d.subtopic ? ` · ${d.subtopic}` : ''}
                           </span>
                           {d.group && (
                             <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded flex items-center gap-1">
@@ -307,7 +307,7 @@ export function DoubtQueuePage() {
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div>
                   <span className="text-[10px] font-bold text-brand-600 uppercase tracking-wider">
-                    {activeDoubt.subject?.code} · {activeDoubt.topic}
+                    {activeDoubt.subject?.code} · {activeDoubt.topic}{activeDoubt.subtopic ? ` · ${activeDoubt.subtopic}` : ''}
                   </span>
                   <h3 className="font-bold text-base text-slate-900 mt-0.5">
                     Official Response to Student Doubt

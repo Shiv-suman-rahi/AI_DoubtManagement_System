@@ -67,7 +67,6 @@ const doubtGroupSchema = new mongoose.Schema(
     assignedFaculty: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
       index: true
     },
     sharedAnswer: {

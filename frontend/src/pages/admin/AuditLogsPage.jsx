@@ -49,6 +49,7 @@ export function AuditLogsPage() {
               <option value="">All Security & Audit Events</option>
               <option value="user_login">User Login</option>
               <option value="user_created">User Created</option>
+              <option value="user_updated">Academic / Assignment Updated</option>
               <option value="user_suspended">User Suspended</option>
               <option value="doubt_submitted">Doubt Submitted</option>
               <option value="doubt_reassigned">Doubt Reassigned</option>

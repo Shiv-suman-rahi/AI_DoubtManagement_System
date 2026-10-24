@@ -24,8 +24,10 @@ export function AskDoubtPage() {
   const [selectedSubject, setSelectedSubject] = useState('');
   const [topics, setTopics] = useState([]);
   const [selectedTopic, setSelectedTopic] = useState('');
+  const [customTopic, setCustomTopic] = useState('');
   const [subtopics, setSubtopics] = useState([]);
   const [selectedSubtopic, setSelectedSubtopic] = useState('');
+  const [customSubtopic, setCustomSubtopic] = useState('');
 
   const [title, setTitle] = useState('');
   const [questionText, setQuestionText] = useState('');
@@ -70,10 +72,10 @@ export function AskDoubtPage() {
       if (found.syllabus.length > 0) {
         setSelectedTopic(found.syllabus[0].topic);
         setSubtopics(found.syllabus[0].subtopics || []);
-        setSelectedSubtopic(found.syllabus[0].subtopics?.[0] || '');
+        setSelectedSubtopic('');
       } else {
         setTopics([]);
-        setSelectedTopic('');
+        setSelectedTopic('__custom__');
         setSubtopics([]);
         setSelectedSubtopic('');
       }
@@ -82,10 +84,14 @@ export function AskDoubtPage() {
 
   const handleTopicChange = topicName => {
     setSelectedTopic(topicName);
+    if (topicName !== '__custom__') setCustomTopic('');
+    setCustomSubtopic('');
+    setSelectedSubtopic('');
     const found = topics.find(t => t.topic === topicName);
     if (found) {
       setSubtopics(found.subtopics || []);
-      setSelectedSubtopic(found.subtopics?.[0] || '');
+    } else {
+      setSubtopics([]);
     }
   };
 
@@ -115,6 +121,24 @@ export function AskDoubtPage() {
       setError('Please select a topic');
       return;
     }
+    const finalTopic = selectedTopic === '__custom__' ? customTopic.trim() : selectedTopic;
+    if (!finalTopic) {
+      setError('Enter a custom topic');
+      return;
+    }
+    if (finalTopic.length > 120) {
+      setError('Topic must be 120 characters or fewer');
+      return;
+    }
+    const finalSubtopic = selectedSubtopic === '__custom__' ? customSubtopic.trim() : selectedSubtopic;
+    if (selectedSubtopic === '__custom__' && !finalSubtopic) {
+      setError('Enter a custom subtopic');
+      return;
+    }
+    if (finalSubtopic.length > 120) {
+      setError('Subtopic must be 120 characters or fewer');
+      return;
+    }
     if (!title.trim() || !questionText.trim()) {
       setError('Title and question details are required');
       return;
@@ -129,8 +153,14 @@ export function AskDoubtPage() {
       const formData = new FormData();
       formData.append('classSubjectId', activeOffering.classSubjectId);
       formData.append('subjectId', activeOffering.subjectId);
-      formData.append('topic', selectedTopic);
-      if (selectedSubtopic) formData.append('subtopic', selectedSubtopic);
+      formData.append('topic', finalTopic);
+      formData.append('topicType', selectedTopic === '__custom__' ? 'custom' : 'predefined');
+      if (finalSubtopic) {
+        formData.append('subtopic', finalSubtopic);
+        formData.append('subtopicType', selectedSubtopic === '__custom__' ? 'custom' : 'predefined');
+      } else {
+        formData.append('subtopicType', 'not_applicable');
+      }
       formData.append('title', title);
       formData.append('questionText', questionText);
       formData.append('privacyMode', privacyMode);
@@ -222,20 +252,35 @@ export function AskDoubtPage() {
                           {t.topic}
                         </option>
                       ))}
+                      <option value="__custom__">Other — Enter a custom topic</option>
                     </select>
+                    {selectedTopic === '__custom__' && (
+                      <input
+                        type="text"
+                        value={customTopic}
+                        onChange={e => setCustomTopic(e.target.value)}
+                        maxLength={120}
+                        required
+                        aria-label="Custom topic"
+                        placeholder="Enter a custom topic (up to 120 characters)"
+                        className="mt-2 w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-brand-500 outline-none"
+                      />
+                    )}
                   </div>
                 </div>
 
                 {/* Subtopic & Priority */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {subtopics.length > 0 && (
-                    <div>
+                  <div>
                       <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                         Specific Subtopic (Optional)
                       </label>
                       <select
                         value={selectedSubtopic}
-                        onChange={e => setSelectedSubtopic(e.target.value)}
+                        onChange={e => {
+                          setSelectedSubtopic(e.target.value);
+                          if (e.target.value !== '__custom__') setCustomSubtopic('');
+                        }}
                         className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-700 focus:bg-white focus:ring-2 focus:ring-brand-500 outline-none"
                       >
                         <option value="">General topic overview</option>
@@ -244,9 +289,21 @@ export function AskDoubtPage() {
                             {st}
                           </option>
                         ))}
+                        <option value="__custom__">Other — Enter a custom subtopic</option>
                       </select>
-                    </div>
-                  )}
+                      {selectedSubtopic === '__custom__' && (
+                        <input
+                          type="text"
+                          value={customSubtopic}
+                          onChange={e => setCustomSubtopic(e.target.value)}
+                          maxLength={120}
+                          required
+                          aria-label="Custom subtopic"
+                          placeholder="Enter a custom subtopic (up to 120 characters)"
+                          className="mt-2 w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-brand-500 outline-none"
+                        />
+                      )}
+                  </div>
 
                   <div>
                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">

@@ -53,7 +53,7 @@ export function FacultyDashboard() {
     );
   }
 
-  const { stats, recentDoubts, activeGroups } = data || {
+  const { stats, recentDoubts, activeGroups, assignments } = data || {
     stats: {
       pendingDoubtsCount: 0,
       resolvedDoubtsCount: 0,
@@ -63,7 +63,8 @@ export function FacultyDashboard() {
       averageResponseTimeHours: 4.2
     },
     recentDoubts: [],
-    activeGroups: []
+    activeGroups: [],
+    assignments: []
   };
 
   return (
@@ -74,6 +75,24 @@ export function FacultyDashboard() {
       />
 
       <main className="p-6 md:p-8 max-w-7xl mx-auto w-full space-y-6">
+        <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div>
+              <h2 className="font-bold text-sm text-slate-900">My current teaching assignments</h2>
+              <p className="text-xs text-slate-500 mt-1">Doubt access is limited to these active class-subjects.</p>
+            </div>
+            <Link to="/faculty/profile" className="text-xs font-semibold text-brand-600 hover:text-brand-800">View profile</Link>
+          </div>
+          {assignments?.length ? (
+            <div className="flex flex-wrap gap-2">
+              {assignments.map(assignment => (
+                <span key={assignment._id} className="px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-xs text-slate-700">
+                  <strong>{assignment.classSubject?.subject?.code}</strong> · {assignment.classSubject?.subject?.name} — {assignment.classSubject?.classroom?.program?.code} {assignment.classSubject?.classroom?.branch}, Sem {assignment.classSubject?.classroom?.semester}, Sec {assignment.classSubject?.classroom?.section}
+                </span>
+              ))}
+            </div>
+          ) : <p className="text-xs text-amber-700">No active teaching assignments. Contact an administrator.</p>}
+        </section>
         {/* Workload Metrics Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">

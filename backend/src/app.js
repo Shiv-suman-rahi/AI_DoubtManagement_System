@@ -1,7 +1,6 @@
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
-import path from 'path';
 import { clientOrigins, env } from './config/env.js';
 import { setupSwagger } from './swagger/swagger.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
@@ -14,6 +13,7 @@ import adminRoutes from './routes/adminRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import knowledgeBaseRoutes from './routes/knowledgeBaseRoutes.js';
+import fileRoutes from './routes/fileRoutes.js';
 
 export function createApp() {
   const app = express();
@@ -45,10 +45,6 @@ export function createApp() {
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-  // Static uploads serving
-  const uploadPath = path.resolve(process.cwd(), env.UPLOAD_DIR);
-  app.use('/uploads', express.static(uploadPath));
-
   // Health check
   app.get('/api/health', (req, res) => {
     res.json({
@@ -71,6 +67,7 @@ export function createApp() {
   app.use('/api/chat', chatRoutes);
   app.use('/api/notifications', notificationRoutes);
   app.use('/api/knowledge-base', knowledgeBaseRoutes);
+  app.use('/api/files', fileRoutes);
 
   // 404 & Centralized Error Handlers
   app.use(notFoundHandler);

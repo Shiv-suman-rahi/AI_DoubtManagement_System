@@ -56,7 +56,7 @@ class AIService {
     }
 
     try {
-      const fullText = `${doubt.title} ${doubt.questionText}`;
+      const fullText = `${doubt.topic} ${doubt.subtopic || ''} ${doubt.title} ${doubt.questionText}`;
       const subjectName = doubt.subject?.name || 'General';
 
       // 1. Classification
@@ -164,7 +164,7 @@ class AIService {
             matchingKeywords: classification.keywords || [],
             reasoning: 'Primary representative question for topic cohort'
           },
-          assignedFaculty: assignedFacultyId || doubt.student // fallback if not assigned yet
+          assignedFaculty: assignedFacultyId
         });
 
         await DoubtGroupItem.create({

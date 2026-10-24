@@ -35,12 +35,14 @@ export function Sidebar() {
     { name: 'Ask Doubt', path: '/student/ask', icon: PlusCircle, highlight: true },
     { name: 'My Classes', path: '/student/classes', icon: GraduationCap },
     { name: 'Browse Subjects', path: '/student/subjects', icon: BookOpen },
+    { name: 'Academic Profile', path: '/student/profile', icon: GraduationCap },
     { name: 'Live Chat', path: '/chat', icon: MessageSquare },
     { name: 'Knowledge Base', path: '/knowledge-base', icon: Library }
   ];
 
   const facultyLinks = [
     { name: 'Faculty Dashboard', path: '/faculty', icon: LayoutDashboard },
+    { name: 'Faculty Assignments', path: '/faculty/profile', icon: UserCheck },
     { name: 'Doubt Queue', path: '/faculty/queue', icon: HelpCircle },
     { name: 'AI Doubt Groups', path: '/faculty/groups', icon: Sparkles, highlight: true },
     { name: 'Live Chat', path: '/chat', icon: MessageSquare },

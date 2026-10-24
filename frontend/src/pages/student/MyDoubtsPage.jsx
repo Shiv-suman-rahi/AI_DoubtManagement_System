@@ -124,7 +124,7 @@ export function MyDoubtsPage() {
                 <div>
                   <div className="flex items-center justify-between text-[11px] text-slate-500 mb-2">
                     <span className="font-bold text-brand-600 uppercase tracking-wider">
-                      {doubt.subject?.code} · {doubt.topic}
+                      {doubt.subject?.code} · {doubt.topic}{doubt.subtopic ? ` · ${doubt.subtopic}` : ''}
                     </span>
                     <PriorityBadge priority={doubt.priority} />
                   </div>

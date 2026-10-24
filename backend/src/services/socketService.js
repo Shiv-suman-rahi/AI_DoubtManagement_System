@@ -61,14 +61,23 @@ export function initSocketIO(httpServer, allowedOrigins) {
     // Room Authorization & Joining
     socket.on('join_room', async ({ roomId, roomType, targetId }, callback) => {
       try {
-        const isAuthorized = await verifyRoomAccess(user, roomType, targetId || roomId);
+        const chatRoom = roomId ? await ChatRoom.findById(roomId) : null;
+        if (roomId && !chatRoom) {
+          if (callback) callback({ success: false, message: 'Chat room not found' });
+          return;
+        }
+        const actualRoomType = chatRoom?.roomType || roomType;
+        const actualTargetId = chatRoom
+          ? chatRoom.subject || chatRoom.classroom || chatRoom.doubt || chatRoom._id
+          : targetId;
+        const isAuthorized = await verifyRoomAccess(user, actualRoomType, actualTargetId);
         if (!isAuthorized) {
           if (callback) callback({ success: false, message: 'Unauthorized room access' });
           socket.emit('error_message', { message: 'Access denied for requested room' });
           return;
         }
 
-        const roomKey = roomId ? `room:${roomId}` : `${roomType}:${targetId}`;
+        const roomKey = chatRoom ? `room:${chatRoom._id}` : `${actualRoomType}:${actualTargetId}`;
         socket.join(roomKey);
         console.log(`[Socket] ${user.name} joined room ${roomKey}`);
 
@@ -132,15 +141,23 @@ export function initSocketIO(httpServer, allowedOrigins) {
     });
 
     // Typing Indicators
-    socket.on('typing_start', ({ roomId }) => {
-      socket.to(`room:${roomId}`).emit('user_typing', {
+    socket.on('typing_start', async ({ roomId }) => {
+      const room = await ChatRoom.findById(roomId);
+      if (!room) return;
+      const target = room.subject || room.classroom || room.doubt || room._id;
+      if (!await verifyRoomAccess(user, room.roomType, target)) return;
+      socket.to(`room:${room._id}`).emit('user_typing', {
         userId: user._id,
         userName: user.name
       });
     });
 
-    socket.on('typing_stop', ({ roomId }) => {
-      socket.to(`room:${roomId}`).emit('user_stop_typing', {
+    socket.on('typing_stop', async ({ roomId }) => {
+      const room = await ChatRoom.findById(roomId);
+      if (!room) return;
+      const target = room.subject || room.classroom || room.doubt || room._id;
+      if (!await verifyRoomAccess(user, room.roomType, target)) return;
+      socket.to(`room:${room._id}`).emit('user_stop_typing', {
         userId: user._id
       });
     });
@@ -176,7 +193,7 @@ export async function verifyRoomAccess(user, roomType, targetId) {
     }
     if (user.role === ROLES.FACULTY) {
       // Find any classSubject in this classroom assigned to this faculty
-      const classSubjects = await ClassSubject.find({ classroom: targetId });
+      const classSubjects = await ClassSubject.find({ classroom: targetId, status: 'active' });
       const csIds = classSubjects.map(cs => cs._id);
       const assignment = await FacultyAssignment.findOne({
         faculty: user._id,
@@ -194,12 +211,13 @@ export async function verifyRoomAccess(user, roomType, targetId) {
       const classroomIds = enrollments.map(e => e.classroom);
       const classSubject = await ClassSubject.findOne({
         subject: targetId,
-        classroom: { $in: classroomIds }
+        classroom: { $in: classroomIds },
+        status: 'active'
       });
       return !!classSubject;
     }
     if (user.role === ROLES.FACULTY) {
-      const classSubjects = await ClassSubject.find({ subject: targetId });
+      const classSubjects = await ClassSubject.find({ subject: targetId, status: 'active' });
       const csIds = classSubjects.map(cs => cs._id);
       const assignment = await FacultyAssignment.findOne({
         faculty: user._id,
@@ -214,11 +232,15 @@ export async function verifyRoomAccess(user, roomType, targetId) {
     const doubt = await Doubt.findById(targetId);
     if (!doubt) return false;
     if (doubt.student.toString() === user._id.toString()) return true;
-    if (doubt.assignedFaculty && doubt.assignedFaculty.toString() === user._id.toString()) return true;
-    return false;
+    if (user.role !== ROLES.FACULTY) return false;
+    return Boolean(await FacultyAssignment.exists({
+      faculty: user._id,
+      classSubject: doubt.classSubject,
+      status: 'active'
+    }));
   }
 
-  return true;
+  return false;
 }
 
 /**
