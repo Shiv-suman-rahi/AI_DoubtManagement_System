@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import { SocketProvider } from './context/SocketContext.jsx';
 import { NotificationProvider } from './context/NotificationContext.jsx';
+import { ThemeProvider } from './context/ThemeContext.jsx';
 import { Sidebar } from './components/common/Sidebar.jsx';
 import { Toast } from './components/common/Toast.jsx';
 
@@ -64,11 +65,12 @@ function ProtectedRoute({ children, allowedRoles }) {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <SocketProvider>
-          <NotificationProvider>
-            <Routes>
+    <ThemeProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <SocketProvider>
+            <NotificationProvider>
+              <Routes>
               {/* Public Authentication */}
               <Route path="/login" element={<LoginPage />} />
 
@@ -218,10 +220,11 @@ export default function App() {
 
               {/* Default Redirect */}
               <Route path="*" element={<Navigate to="/login" replace />} />
-            </Routes>
-          </NotificationProvider>
-        </SocketProvider>
-      </AuthProvider>
-    </BrowserRouter>
+              </Routes>
+            </NotificationProvider>
+          </SocketProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }

@@ -19,3 +19,8 @@ uploads/
 *.log
 .DS_Store
 Thumbs.db
+
+
+#docker compose (by Rohit Raj) 
+compose.yaml  
+readme.md  
