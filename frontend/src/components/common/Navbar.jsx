@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useSocket } from '../../context/SocketContext.jsx';
 import { useNotifications } from '../../context/NotificationContext.jsx';
+import { ThemeToggle } from './ThemeToggle.jsx';
 import { Bell, Wifi, WifiOff, CheckCircle2 } from 'lucide-react';
 
 export function Navbar({ title, subtitle }) {
@@ -18,6 +19,8 @@ export function Navbar({ title, subtitle }) {
       </div>
 
       <div className="flex items-center space-x-4">
+        <ThemeToggle />
+
         {/* Real-time Socket status indicator */}
         <div className="flex items-center space-x-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
           {connected ? (
